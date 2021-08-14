@@ -1,67 +1,64 @@
-/**
- * Server Test using the proto files form JMS
- */
 
-#include <iostream>
-#include <pb_encode.h>
-#include <pb_decode.h>
-
-// System socket
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
+// Server side C/C++ program to demonstrate Socket programming
 #include <unistd.h>
-#include <dirent.h>
 #include <stdio.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
 #include <string.h>
 
-// Compiled JMS Messages
-#include "JMS/electronics/src/libs/Network/Messages/JMS_Messages/messages.h"
 
-
-// Server settings
 #define PORT 5333
-
-int main() {
-	std::cout << "-- Test Bench Start --" << std::endl;
-
-	int listenfd, connfd;
-	struct sockaddr_in servaddr;
-	int reuse = 1;
-
-	listenfd = socket(AF_INET, SOCK_STREAM, 0);
-	setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	servaddr.sin_port = htons(PORT);
-
-	std::cout << "Binding..." << std::endl;
-	if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0) {
-		std::cout << "Binding error" << std::endl;
+int main(int argc, char const *argv[]) {
+	int server_fd, new_socket, valread;
+	struct sockaddr_in address;
+	int opt = 1;
+	int addrlen = sizeof(address);
+	char buffer[128];
+	// const char *hello = "Hello from server";
+			
+	// Creating socket file descriptor
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+		perror("socket failed");
+		exit(EXIT_FAILURE);
 	}
-	std::cout << "Binded" << std::endl;
-
-
-	std::cout << "Listening..." << std::endl;
-	if (listen(listenfd, 5) != 0) {
-		std::cout << "Listen Error" << std::endl;
+			
+	// Forcefully attaching socket to the port
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
 	}
 
-	std::cout << "Listen complete" << std::endl;
+	printf("Set Socket success\n");
 
-	std::cout << "Accepting..." << std::endl;
-	while (true) {
-		connfd = accept(listenfd, NULL, NULL);
-
-		if (connfd < 0) {
-			std::cout << "Accept" << std::endl;
-		}
-
-		std::cout << "Connection made" << std::endl;
-		
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons( PORT );
+			
+	// Forcefully attaching socket to the port 8080
+	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0) {
+		perror("bind failed");
+		exit(EXIT_FAILURE);
 	}
 
+	printf("Bind success\n");
+
+	if (listen(server_fd, 3) < 0) {
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Listen success\n");
+	
+	if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
+		perror("accept");
+		exit(EXIT_FAILURE);
+	}
+	
+	while (1) {
+		printf("Accepted reading...\n");
+		valread = recv(new_socket, buffer, sizeof(buffer), 0);
+		printf("From client: %s, bytes: %d\n",buffer,valread);
+	}
 	return 0;
 }
