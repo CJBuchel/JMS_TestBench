@@ -7,6 +7,18 @@
 #include <netinet/in.h>
 #include <string.h>
 
+#include <iostream>
+
+#include "JMS/electronics/src/libs/Network/Messages/JMS_Messages/messages.h"
+
+#include <pb.h>
+#include <pb_common.h>
+#include <pb_encode.h>
+#include <pb_decode.h>
+
+
+// message packets
+jms_electronics_UpdateNode2Field receive_packet = jms_electronics_UpdateNode2Field_init_zero;
 
 #define PORT 5333
 int main(int argc, char const *argv[]) {
@@ -14,7 +26,7 @@ int main(int argc, char const *argv[]) {
 	struct sockaddr_in address;
 	int opt = 1;
 	int addrlen = sizeof(address);
-	char buffer[128];
+	uint8_t buffer[128];
 	// const char *hello = "Hello from server";
 			
 	// Creating socket file descriptor
@@ -58,7 +70,27 @@ int main(int argc, char const *argv[]) {
 	while (1) {
 		printf("Accepted reading...\n");
 		valread = recv(new_socket, buffer, sizeof(buffer), 0);
-		printf("From client: %s, bytes: %d\n",buffer,valread);
+		if (valread < 0) {
+			std::cout << "Error in message received" << valread << std::endl;
+		} else {
+			jms_electronics_UpdateNode2Field tmpInputMessage = jms_electronics_UpdateNode2Field_init_zero;
+			pb_istream_t stream = pb_istream_from_buffer(buffer, 10);
+
+			bool status = pb_decode(&stream, jms_electronics_UpdateField2Node_fields, &tmpInputMessage);
+
+			if (!status) {
+				printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
+			}
+
+			receive_packet = tmpInputMessage;
+
+			if (status) {
+				system("clear");
+				std::cout << "Scoring Abort button: " << receive_packet.data.scoringTable.abort << std::endl;
+			}
+		}
+
+		// printf("From client: %s, bytes: %d\n",buffer,valread);
 	}
 	return 0;
 }
