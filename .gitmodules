@@ -1,0 +1,7 @@
+[submodule "JMS"]
+	path = JMS
+	url = https://github.com/CJBuchel/JMS.git
+	branch = networking
+[submodule "nanopb"]
+	path = nanopb
+	url = https://github.com/nanopb/nanopb.git
