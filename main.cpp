@@ -16,19 +16,64 @@
 #include <pb_encode.h>
 #include <pb_decode.h>
 
-
 // message packets
-jms_electronics_UpdateNode2Field receive_packet = jms_electronics_UpdateNode2Field_init_zero;
+// TestMessage test_packet = TestMessage_init_zero;
+jms_electronics_UpdateNode2Field n2f_packet = jms_electronics_UpdateNode2Field_init_zero;
+jms_electronics_UpdateField2Node f2n_packet = jms_electronics_UpdateField2Node_init_zero;
+
+/**
+ * Encode the local send message.
+ * Returns the enocded buffer
+ */
+uint8_t *encodeSendMessage(size_t bufferSize, int &bytesWritten) {
+	uint8_t *returner = (uint8_t *)malloc(sizeof(uint8_t) * bufferSize);
+
+	uint8_t buffer[bufferSize];
+	pb_ostream_t stream = pb_ostream_from_buffer(buffer, bufferSize);
+
+	bool status = pb_encode(&stream, jms_electronics_UpdateField2Node_fields, &f2n_packet);
+
+	printf("bytes written: %ld\n", stream.bytes_written);
+	bytesWritten = stream.bytes_written;
+	for (size_t i = 0; i < bufferSize; i++) {
+		returner[i] = buffer[i];
+	}
+
+	if (!status) {
+		printf("Encoding Failed: %s\n", PB_GET_ERROR(&stream));
+	}
+
+	return returner;
+}
+
+/**
+ * Decode form the buffer
+ * places decoded data into local receive message
+ */
+void decodeReceiveMessage(uint8_t buffer[128], size_t message_length) {
+	jms_electronics_UpdateNode2Field tmpInputMessage = jms_electronics_UpdateNode2Field_init_zero;
+
+	std::cout << "Message len: " << message_length << std::endl;
+	pb_istream_t stream = pb_istream_from_buffer(buffer, message_length);
+	bool status = pb_decode(&stream, jms_electronics_UpdateNode2Field_fields, &tmpInputMessage);
+
+	if (!status) {
+		printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
+	}
+
+	n2f_packet = tmpInputMessage;
+}
 
 #define PORT 5333
 int main(int argc, char const *argv[]) {
-	int server_fd, new_socket, valread;
+
+	int server_fd, new_socket;
 	struct sockaddr_in address;
 	int opt = 1;
 	int addrlen = sizeof(address);
-	uint8_t buffer[128];
+	// uint8_t buffer[128];
 	// const char *hello = "Hello from server";
-			
+
 	// Creating socket file descriptor
 	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
 		perror("socket failed");
@@ -68,29 +113,60 @@ int main(int argc, char const *argv[]) {
 	}
 	
 	while (1) {
-		printf("Accepted reading...\n");
-		valread = recv(new_socket, buffer, sizeof(buffer), 0);
-		if (valread < 0) {
-			std::cout << "Error in message received" << valread << std::endl;
+
+		// Receiving
+		// printf("Accepted reading...\n");
+		// valread = recv(new_socket, buffer, sizeof(buffer), 0);
+		// if (valread < 0) {
+		// 	std::cout << "Error in message received" << valread << std::endl;
+		// } else {
+		// 	jms_electronics_UpdateNode2Field tmpInputMessage = jms_electronics_UpdateNode2Field_init_zero;
+		// 	pb_istream_t stream = pb_istream_from_buffer(buffer, valread);
+		// 	printf("Recv: %d\n", valread);
+
+		// 	bool status = pb_decode(&stream, jms_electronics_UpdateNode2Field_fields, &tmpInputMessage);
+
+		// 	if (!status) {
+		// 		printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
+		// 	}
+
+		// 	n2f_packet = tmpInputMessage;
+
+		// 	// std::cout << "Abort Status: " << n2f_packet.data.scoringTable.abort << std::endl;
+		// 	std::cout << "Role: " << n2f_packet.role << std::endl;
+		// 	std::cout << "ip: " << n2f_packet.ipv4 << std::endl; 
+		// }
+
+		// Sending
+		f2n_packet.role = jms_electronics_NodeRole_NODE_SCORING_TABLE;
+		f2n_packet.which_data = jms_electronics_UpdateField2Node_scoringTable_tag;
+		int bytesWritten = 0;
+		uint8_t *buffer = encodeSendMessage(128, bytesWritten);
+
+		int sendBytes = send(new_socket, buffer, bytesWritten, 0);
+		if (sendBytes < 0) {
+			std::cout << "Error sending" << std::endl;
 		} else {
-			jms_electronics_UpdateNode2Field tmpInputMessage = jms_electronics_UpdateNode2Field_init_zero;
-			pb_istream_t stream = pb_istream_from_buffer(buffer, 10);
-
-			bool status = pb_decode(&stream, jms_electronics_UpdateField2Node_fields, &tmpInputMessage);
-
-			if (!status) {
-				printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
-			}
-
-			receive_packet = tmpInputMessage;
-
-			if (status) {
-				system("clear");
-				std::cout << "Scoring Abort button: " << receive_packet.data.scoringTable.abort << std::endl;
-			}
+			std::cout << "Bytes sent: " << sendBytes << std::endl;
 		}
+		// pb_ostream_t stream_out = pb_ostream_from_buffer(buffer_out, buffSize);
 
-		// printf("From client: %s, bytes: %d\n",buffer,valread);
+
+		// f2n_packet.which_data = jms_electronics_UpdateField2Node_first_tag;
+		// f2n_packet.role = jms_electronics_NodeRole_NODE_SCORING_TABLE;
+
+		// bool status_out = pb_encode(&stream_out, jms_electronics_UpdateField2Node_fields, &f2n_packet);
+		// if (!status_out) {
+			// std::cout << "Encoding failed: " << PB_GET_ERROR(&stream_out) << std::endl;
+		// }
+
+
+		// valread = send(new_socket, buffer, stream_out.bytes_written, 0);
+		// std::cout << "Valread: " << valread << std::endl;
+		// std::cout << "Which data: " << f2n_packet.which_data << std::endl;
+		// std::cout << "Sent data size: " << valread << std::endl;
+		sleep(1);
 	}
+		
 	return 0;
 }

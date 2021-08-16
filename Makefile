@@ -4,12 +4,14 @@ CFLAGS = -ansi -Wall -Werror -g -O0
 CFLAGS += "-I$(NANOPB_DIR)"
 CFLAGS +=-I.
 
-NODES_PB = JMS/electronics/src/libs/Network/Messages/JMS_Messages/nodes.pb.c
-NODES_PB_HEADERS = JMS/electronics/src/libs/Network/Messages/JMS_Messages/nodes.pb.h
+MESSAGE_DIR = JMS/electronics/src/libs/Network/Messages/JMS_Messages
+
+MESSAGES = $(MESSAGE_DIR)/nodes.pb.c $(MESSAGE_DIR)/test_message.pb.c
+MESSAGES_HEADERS = $(MESSAGE_DIR)/nodes.pb.h $(MESSAGE_DIR)/test_message.pb.h
 
 # Cpp Source code
 CSRC = main.cpp
-CSRC += $(NODES_PB)
+CSRC += $(MESSAGES)
 CSRC += $(NANOPB_DIR)/pb_encode.c  # The nanopb encoder
 CSRC += $(NANOPB_DIR)/pb_decode.c  # The nanopb decoder
 CSRC += $(NANOPB_DIR)/pb_common.c  # The nanopb common parts
